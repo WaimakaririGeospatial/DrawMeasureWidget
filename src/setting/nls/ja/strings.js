@@ -1,12 +1,26 @@
 ﻿define(
    ({
-    serviceURL: "サービスの URL",
-    defaultTitle: "デフォルトのタイトル",
-    defaultAuthor: "デフォルトの作成者",
-    defaultCopyright: "デフォルトの著作権表示",
-    defaultFormat: "デフォルトの出力形式",
-    defaultLayout: "デフォルトのレイアウト",
-    warning: "不正な入力",
-    ok: "OK"
+    addDistance: "長さ単位の追加",
+    addArea: "面積単位の追加",
+    label: "ラベル",
+    abbr: "略語",
+    conversion: "変換",
+    actions: "アクション",
+    areaUnits: "面積単位",
+    distanceUnits: "長さ単位",
+    kilometers: "キロメートル",
+    miles: "マイル",
+    meters: "メートル",
+    feet: "フィート",
+    yards: "ヤード",
+    squareKilometers: "平方キロメートル",
+    squareMiles: "平方マイル",
+    acres: "エーカー",
+    hectares: "ヘクタール",
+    squareMeters: "平方メートル",
+    squareFeet: "平方フィート",
+    squareYards: "平方ヤード",
+    distance: "距離",
+    area: "面積"
   })
 );

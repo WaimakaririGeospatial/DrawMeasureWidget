@@ -1,12 +1,26 @@
 ﻿define(
    ({
-    serviceURL: "adresa URL služby",
-    defaultTitle: "Výchozí název",
-    defaultAuthor: "Výchozí autor",
-    defaultCopyright: "Výchozí autorská práva",
-    defaultFormat: "Výchozí formát",
-    defaultLayout: "Výchozí rozvržení",
-    warning: "Nesprávný vstup",
-    ok: "OK"
+    addDistance: "Přidat jednotku délky",
+    addArea: "Přidat jednotku plochy",
+    label: "Štítek",
+    abbr: "Zkratka",
+    conversion: "Konverze",
+    actions: "Akce",
+    areaUnits: "Plošné jednotky",
+    distanceUnits: "Jednotky délky",
+    kilometers: "Kilometry",
+    miles: "Míle",
+    meters: "Metry",
+    feet: "Stopy",
+    yards: "Yardy",
+    squareKilometers: "Čtvereční kilometry",
+    squareMiles: "Čtvereční míle",
+    acres: "Akry",
+    hectares: "Hektary",
+    squareMeters: "Čtvereční metry",
+    squareFeet: "Čtvereční stopy",
+    squareYards: "Čtvereční yardy",
+    distance: "Vzdálenosti",
+    area: "Plochy"
   })
 );

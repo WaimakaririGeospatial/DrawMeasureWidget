@@ -1,83 +1,104 @@
-.jimu-widget-print{
-  width: 100%;
-  height: 100%;
-  position: relative;
+.jimu-widget-draw{
+	width: 100%;
+	height: 100%;
+	min-width: 270px;
+	min-height: 192px;
+	font-size: 14px;
 }
 
-.jimu-widget-print .dijitSelect{
-  height: 20px;
-  width: 100%;
+.jimu-widget-draw .measure-section{
+	display: none;
+	width: 100%;
+	margin-top: 12px;
 }
 
-.gis_PrintDijit {
-  width: 100%;
+.jimu-widget-draw .area-units-tip{
+	height: 30px;
+	line-height: 30px;
+	padding-left: 17px;
 }
 
-.gis_PrintDijit .printResult {
-  /*border: 1px solid #CCCCCC;*/
-  height: 28px;
-  margin-bottom: -1px;
-  width: 100%;
+.jimu-rtl .jimu-widget-draw .area-units-tip{
+	padding-left: 0;
+	padding-right: 17px;
 }
 
-.gis_PrintDijit .printResult .printResultTable {
-  width: 100%;
+.jimu-widget-draw .distance-units-tip{
+	height: 30px;
+	line-height: 30px;
+	padding-left: 17px;
 }
 
-.gis_PrintDijit .printResult .bold {
-  font-weight: bold;
+.jimu-rtl .jimu-widget-draw .distance-units-tip{
+	padding-left: 0;
+	padding-right: 17px;
 }
 
-.gis_PrintDijit .printResultError {
-  font-weight: bold;
-  color: red;
-  cursor: help;
+.jimu-widget-draw .dijitArrowButtonContainer{
+	width: 40px;
 }
 
-.gis_PrintDijit .printResult .error-icon {
-  width: 16px;
-  height: 18px;
-  background: url(../images/error.png) center no-repeat;
+.jimu-widget-draw .dijitSelect{
+	height: 40px;
+	width: 100%;
 }
 
-.gis_PrintDijit .printResultHover table:hover {
-  background-color: #D4E7F8;
-  cursor: pointer;
+.jimu-widget-draw .dijitReset.dijitLeft.dijitButtonNode.dijitArrowButton.dijitDownArrowButton{
+	width:100%;
 }
 
-.gis_PrintDijit .buttonActionBar {
-  padding: 3px 0px 2px 0px;
-  width: 100%;
+.jimu-widget-draw .dijitReset.dijitLeft.dijitButtonNode.dijitArrowButton.dijitUpArrowButton{
+	width:100%;
 }
 
-.gis_PrintDijit .formContainer {
-  /*border: 1px solid #bbb;*/
-  margin-bottom: -1px;
-  width: 100%;
+.jimu-widget-draw .dijitReset.dijitLeft.dijitButtonNode.dijitArrowButton.dijitDownArrowButton .dijitArrowButtonInner{
+	width:100%;
 }
 
-.gis_PrintDijit .resultsContainer {
-  width: 100%;
-  margin-top: 10px;
+.jimu-widget-draw .dijitReset.dijitLeft.dijitButtonNode.dijitArrowButton.dijitUpArrowButton .dijitArrowButtonInner{
+	width:100%;
+}
+.jimu-widget-draw .footer{
+	display: none;
+	width: 100%;
+	margin: 12px 0 12px 0px;
+}
+/* File Upload Section */
+.jimu-widget-draw .file-upload-form {
+    display: none;
+	width: 100%;
 }
 
-.gis_PrintDijit .printIcon {
-  background-image: url(../images/print.png);
-  width: 16px;
-  height: 16px;
+/*Buffer Section*/
+.buffer-icon{
+	background:transparent url("../images/BufferIcon.png") center center no-repeat ;
+}
+.mousetip {
+    background-color: white;
+    border: 1px solid #7EABCD;
+    border-radius: 4px 4px 4px 4px;
+    font-size: 9pt;
+    padding: 5px;
+    position: absolute;
+    width: 114px;
+    z-index: 9999;
 }
 
-.gis_PrintDijit .clearIcon {
-  background-image: url(../images/clear.png);
-  width: 16px;
-  height: 16px;
+.jimu-widget-draw .buffer-section{
+	display: none;
+	width: 100%;
+	margin-top: 12px;
+}
+.jimu-widget-draw .buffer-distance-tip{
+	height: 30px;
+	line-height: 30px;
 }
 
-.gis_PrintDijit .settingsIcon {
-  background-image: url(../images/settings.png);
-  width: 16px;
-  height: 16px;
+.jimu-rtl .jimu-widget-draw .buffer-units-tip{
+	padding-left: 0;
+	padding-right: 17px;
 }
-.gis_PrintDijit .dijitArrowButtonContainer{
-  width: 17px;
+.jimu-widget-draw .buffer-select {
+    float:left !important;
+    margin-left:30px;
 }

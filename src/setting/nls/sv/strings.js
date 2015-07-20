@@ -1,12 +1,26 @@
 ﻿define(
    ({
-    serviceURL: "Tjänste-URL",
-    defaultTitle: "Standardtitel",
-    defaultAuthor: "Standardförfattare",
-    defaultCopyright: "Standardcopyright",
-    defaultFormat: "Standardformat",
-    defaultLayout: "Standardlayout",
-    warning: "Felaktiga indata",
-    ok: "OK"
+    addDistance: "Lägg till längdenhet",
+    addArea: "Lägg till areaenhet",
+    label: "Etikett",
+    abbr: "Förkortning",
+    conversion: "Konvertering",
+    actions: "Åtgärder",
+    areaUnits: "Areaenheter",
+    distanceUnits: "Längdenheter",
+    kilometers: "Kilometer",
+    miles: "Engelska mil",
+    meters: "Meter",
+    feet: "Fot",
+    yards: "Yard",
+    squareKilometers: "Kvadratkilometer",
+    squareMiles: "Square miles",
+    acres: "Tunnland",
+    hectares: "Hektar",
+    squareMeters: "Kvadratmeter",
+    squareFeet: "Square feet",
+    squareYards: "Square yards",
+    distance: "Distanser",
+    area: "Ytor"
   })
 );

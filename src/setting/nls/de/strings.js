@@ -1,12 +1,26 @@
 ﻿define(
    ({
-    serviceURL: "Service-URL",
-    defaultTitle: "Standardtitel",
-    defaultAuthor: "Standardautor",
-    defaultCopyright: "Standard-Copyright",
-    defaultFormat: "Standardformat",
-    defaultLayout: "Standard-Layout",
-    warning: "Falsche Eingabe",
-    ok: "OK"
+    addDistance: "Längeneinheit hinzufügen",
+    addArea: "Flächeneinheit hinzufügen",
+    label: "Beschriftung",
+    abbr: "Abkürzung",
+    conversion: "Konvertierung",
+    actions: "Aktionen",
+    areaUnits: "Flächeneinheiten",
+    distanceUnits: "Längeneinheiten",
+    kilometers: "Kilometer",
+    miles: "Meilen",
+    meters: "Meter",
+    feet: "Fuß",
+    yards: "Yards",
+    squareKilometers: "Quadratkilometer",
+    squareMiles: "Quadratmeilen",
+    acres: "Acres",
+    hectares: "Hektar",
+    squareMeters: "Quadratmeter",
+    squareFeet: "Quadratfuß",
+    squareYards: "Quadratyard",
+    distance: "Entfernungen",
+    area: "Flächen"
   })
 );

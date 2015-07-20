@@ -1,12 +1,26 @@
 ﻿define(
    ({
-    serviceURL: "Teenuse URL",
-    defaultTitle: "Vaikimisi pealkiri",
-    defaultAuthor: "Vaikimisi autor",
-    defaultCopyright: "Vaikimisi autoriõigus",
-    defaultFormat: "Vaikemisi vorming",
-    defaultLayout: "Vaikimisi paigutus",
-    warning: "Vale sisend",
-    ok: "OK"
+    addDistance: "Lisa vahemaa ühik",
+    addArea: "Lisa pindala ühik",
+    label: "Märgis",
+    abbr: "Lühend",
+    conversion: "Teisendus",
+    actions: "Tegevused",
+    areaUnits: "Pindalaühikud",
+    distanceUnits: "Vahemaa ühikud",
+    kilometers: "Kilomeetrit",
+    miles: "Miili",
+    meters: "Meetrit",
+    feet: "Jalga",
+    yards: "Jardi",
+    squareKilometers: "Ruutkilomeetrit",
+    squareMiles: "Ruutmiili",
+    acres: "Aakrit",
+    hectares: "Hektarit",
+    squareMeters: "Ruutmeetrit",
+    squareFeet: "Ruutjalga",
+    squareYards: "Ruutjardi",
+    distance: "Vahemaad",
+    area: "Pindalad"
   })
 );
