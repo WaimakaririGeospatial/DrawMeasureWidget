@@ -44,7 +44,8 @@ define(
             }
 
 
-            var w = PrintTask.prototype._getPrintDefinition(map);
+            var printTask = new PrintTask();
+            var w = printTask._getPrintDefinition(map);
 
             var operationalLayers = this.getOperationalLayers(w,map);
             var mapOptions = w.mapOptions;

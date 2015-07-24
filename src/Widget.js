@@ -90,7 +90,9 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               jimuUtils.combineRadioCheckBoxWithLabel(this.showMeasure, this.showMeasureLabel);
               this.drawBox.setMap(this.map);
               if (!this.drawBox.drawLayer.id) {
-                  this.drawBox.drawLayer.id = "drawtool-graphics";
+                  this.drawBox.drawLayer.id = "-drawtool";
+              } else {
+                  this.drawBox.drawLayer.id = this.drawBox.drawLayer.id + "-drawtool";
               }
 
               this.viewStack = new ViewStack({
@@ -275,6 +277,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                                   var importGraphicsErrorMsg = response.results[0].value.error;
                                   if (!importGraphicsErrorMsg.length) {
                                       this._renderImportedGraphics(response);
+                                      this._toggleLoading(false);
                                   } else {
                                       this._showErrorMessage(this.nls.failedRetrievingGraphics);
                                   }
@@ -282,6 +285,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                               deferred.resolve();
                           }));
                       } else {
+                          this._toggleLoading(false);
                           this._showErrorMessage(this.nls.failedUpload);
                           deferred.resolve();
                       }
@@ -312,6 +316,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                       deferred.resolve(res)
                   }),
                   lang.hitch(this, function (e) {
+                      this._toggleLoading(false);
                       if (e.message != 'Request canceled') {
                           this._showErrorMessage(e.toString());
                       }
@@ -323,6 +328,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           },
           _renderImportedGraphics: function (response) {
               var me = this;
+              var map = this.map;
               var results = JSON.parse(response.results[0].value.webmap);
               var redlineLayer = this.drawBox.drawLayer;
               var graphicsArray = [];
@@ -343,9 +349,13 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
 
               // all graphics except text are from redline layer
               var redlineGraphicsLayerConfig = array.filter(results.operationalLayers, function (layer) {
-                  return layer.id === redlineLayer.id;
+                  var regExp = new RegExp(/-drawtool/ig);
+                  return regExp.test(layer.id);
               })[0];
 
+              if (!redlineGraphicsLayerConfig || !redlineGraphicsLayerConfig.featureCollection) {
+                  return;
+              }
               var layerSet = redlineGraphicsLayerConfig.featureCollection.layers;
               addLayerSet(layerSet, true);
 
@@ -513,7 +523,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               });
               //////////////////////////////////////////		 
 
-              if (geometry.type === 'extent') {
+              if (geometry.type && geometry.type === 'extent') {
                   var a = geometry;
                   var polygon = new Polygon(a.spatialReference);
                   var r = [[a.xmin, a.ymin], [a.xmin, a.ymax], [a.xmax, a.ymax], [a.xmax, a.ymin], [a.xmin, a.ymin]];
@@ -729,16 +739,17 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                       console.log("Good to go!");
                       Spat = "geo";
                   } else {
-                      Spatialutils.loadResource();
-                      var WKTCurrent = Spatialutils.getCSStr(map.spatialReference.wkid);
-                      function mapSpat() {
-                          if (WKTCurrent.charAt(0) == 'G') {
-                              Spat = "geo";
-                          } else {
-                              Spat = "proj";
-                          }
-                      };
-                      mapSpat();
+                      Spatialutils.loadResource().then(function () {
+                          var WKTCurrent = Spatialutils.getCSStr(map.spatialReference.wkid);
+                          function mapSpat() {
+                              if (WKTCurrent.charAt(0) == 'G') {
+                                  Spat = "geo";
+                              } else {
+                                  Spat = "proj";
+                              }
+                          };
+                          mapSpat();
+                      });
                   }
               };
 
@@ -1028,6 +1039,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                           window.location = url;
                       } else {
                           console.log(resp);
+                          this._toggleLoading(false);
                           this._showErrorMessage("error")
                           return;
                       }
@@ -1073,6 +1085,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                       deferred.resolve(res)
                   }),
                   lang.hitch(this, function (e) {
+                      this._toggleLoading(false);
                       if (e.message != 'Request canceled') {
                           this._showErrorMessage(e.toString())
                       }
