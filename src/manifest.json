@@ -6,5 +6,17 @@
   "author": "Esri R&D Center Beijing",
   "description": "",
   "copyright": "",
-  "license": "http://www.apache.org/licenses/LICENSE-2.0"
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {
+    "inPanel": true,
+    "hasLocale": true,
+    "hasStyle": true,
+    "hasConfig": true,
+    "hasUIFile": true,
+    "hasSettingPage":false,
+    "hasSettingUIFile":false,
+    "hasSettingLocale":false,
+    "hasSettingStyle":false,
+    "IsController":false
+  }
 }

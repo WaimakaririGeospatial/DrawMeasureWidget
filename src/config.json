@@ -79,6 +79,7 @@
 			}
 		]
 	},
+	"includeExportImport":false,
 	"importServiceUrl":"https://secure.gbs.co.nz/arcgis/rest/services/WDC/ExportGraphics/GPServer/uploads/upload",
 	"exportServiceUrl":"https://secure.gbs.co.nz/arcgis/rest/services/WDC/ExportGraphics/GPServer/ExportGraphics/execute"
 }

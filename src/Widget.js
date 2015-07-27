@@ -89,12 +89,6 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               this.inherited(arguments);
               jimuUtils.combineRadioCheckBoxWithLabel(this.showMeasure, this.showMeasureLabel);
               this.drawBox.setMap(this.map);
-              if (!this.drawBox.drawLayer.id) {
-                  this.drawBox.drawLayer.id = "-drawtool";
-              } else {
-                  this.drawBox.drawLayer.id = this.drawBox.drawLayer.id + "-drawtool";
-              }
-
               this.viewStack = new ViewStack({
                   viewType: 'dom',
                   views: [this.pointSection, this.lineSection, this.polygonSection, this.textSection]
@@ -349,7 +343,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
 
               // all graphics except text are from redline layer
               var redlineGraphicsLayerConfig = array.filter(results.operationalLayers, function (layer) {
-                  var regExp = new RegExp(/-drawtool/ig);
+                  var regExp = new RegExp(/graphicsLayer/ig);
                   return regExp.test(layer.id);
               })[0];
 
