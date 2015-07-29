@@ -156,6 +156,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this._toggleLoading(arguments[0]);
               }));
               topic.subscribe("BUFFER_GRAPHIC_ADDED", lang.hitch(this, function () {
+                  this.bufferTool.deactivate();
                   if (this.showMeasure.checked) {
                       this._addPolygonMeasure(arguments[0]);
                   }
@@ -451,6 +452,8 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this.drawBox.deactivate();
                   this.bufferTool.activate();
                   this._updateBufferOperationValues();
+                  this.viewStack.switchView(this.polygonSection);
+                  this._setMeasureVisibility();
                   this._setBufferSectionVisibility(true);
               }
           },
@@ -699,7 +702,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   html.setStyle(this.measureSection, 'display', 'block');
                   if (this.showMeasure.checked) {
                       html.setStyle(this.areaMeasure, 'display', 'block');
-                      html.setStyle(this.distanceMeasure, 'display', 'block');
+                      //html.setStyle(this.distanceMeasure, 'display', 'block');
                   }
               }
           },
@@ -958,7 +961,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   return;
               }
               var measureGraphics = array.filter(this.drawBox.drawLayer.graphics, lang.hitch(this, function (graphic) {
-                  return graphic.attributes && (graphic.attributes["uniqueId"] == updatedGraphic.attributes["uniqueId"] && graphic.symbol.type === 'textsymbol');
+                  return graphic.attributes && (graphic.attributes["uniqueId"] == updatedGraphic.attributes["uniqueId"] && (graphic.symbol && graphic.symbol.type === 'textsymbol'));
               }));
               if (measureGraphics.length > 0) {
                   var measureGraphic = measureGraphics[0];
