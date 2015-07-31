@@ -2,7 +2,7 @@ define({
   root: ({
     _widgetLabel: "Draw Measure Widget",
     selectDrawMode: "Select drawing mode",
-    clear: "Clear",
+    clear: "Clear All",
     point: "Point",
     line: "Line",
     polyline: "Polyline",

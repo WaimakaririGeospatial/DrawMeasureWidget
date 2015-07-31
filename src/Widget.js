@@ -156,7 +156,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this._toggleLoading(arguments[0]);
               }));
               topic.subscribe("BUFFER_GRAPHIC_ADDED", lang.hitch(this, function () {
-                  this.bufferTool.deactivate();
+                  this._onBufferToolClick({ target: this.bufferTool.domNode })
                   if (this.showMeasure.checked) {
                       this._addPolygonMeasure(arguments[0]);
                   }
@@ -453,6 +453,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this.bufferTool.activate();
                   this._updateBufferOperationValues();
                   this.viewStack.switchView(this.polygonSection);
+                  this.showMeasure.checked = false;//to always turn off the measure so that user can deliberately cho
                   this._setMeasureVisibility();
                   this._setBufferSectionVisibility(true);
               }
@@ -466,7 +467,6 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           _onIconSelected: function (target, geotype, commontype) {
               if (this.bufferTool.isActive()) {
                   this.bufferTool.deactivate();
-                  this._setBufferSectionVisibility(false);
               }
               this._setDrawDefaultSymbols();
               if (commontype === 'point') {
@@ -482,7 +482,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this.viewStack.switchView(this.textSection);
               }
               this._setMeasureVisibility();
-
+              this._setBufferSectionVisibility(false);
           },
 
           _onDrawEnd: function (graphic, geotype, commontype) {
