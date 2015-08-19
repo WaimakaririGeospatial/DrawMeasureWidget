@@ -933,6 +933,9 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           _repositionMeasureGraphics: function (event) {
               var movedGraphic = event.graphic;
               var transform = event.transform;
+              if (movedGraphic.geometry.type === 'point') {
+                  return;
+              }
               var measureGraphics = array.filter(this.drawBox.drawLayer.graphics, lang.hitch(this, function (graphic) {
                   return graphic.attributes && (graphic.attributes["uniqueId"] == movedGraphic.attributes["uniqueId"] && (graphic.geometry.type === 'point'));
               }));
