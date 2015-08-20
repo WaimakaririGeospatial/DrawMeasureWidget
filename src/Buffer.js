@@ -94,7 +94,7 @@ define(
                             var bufferGraphic = new Graphic(bufferGeom, me._symbology, { uniqueId: new Date().getTime() });
                             me._layer.add(bufferGraphic);
                             if (bufferGraphic && bufferGraphic.getDojoShape()) {
-                                if (me._distance < 0) {
+                                if (me._distance <= 0) {
                                     bufferGraphic.getDojoShape().moveToFront();
                                 } else {
                                     bufferGraphic.getDojoShape().moveToBack();
