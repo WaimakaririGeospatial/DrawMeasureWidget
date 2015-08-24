@@ -8,27 +8,43 @@ define(
     "dojo/_base/declare",
     "dojo/aspect",
     "dojo/_base/array",
+    "dojo/_base/lang",
+    "dojo/promise/all",
+    "dojo/Deferred",
+    'dojo/dom-class',
+    'esri/graphic',
     'esri/geometry/Polyline',
     'jimu/utils',
     'esri/units',
     'esri/geometry/webMercatorUtils',
-    'esri/geometry/geodesicUtils'
+    'esri/geometry/geodesicUtils',
+    './MeasureUtil',
+    './CustomUtil'
        
 ], function (
   declare,
   aspect,
   array,
+  lang,
+  all,
+  Deferred,
+  domClass,
+  Graphic,
   Polyline,
   jimuUtils,
   esriUnits,
   webMercatorUtils,
-  geodesicUtils
+  geodesicUtils,
+  MeasureUtil,
+  CustomUtil
  ) {
     var DynamicMeasure= declare("DynamicMeasure", null, {
         constructor: function (tool) {
             this._setDrawTool(tool);
             this._startup();
         },
+        _mouseMoving: false,
+        _mouseDragging:false,
         _setDrawTool:function(tool){
             this._tool = tool;
         },
@@ -58,6 +74,27 @@ define(
         _startup: function () {
             var me = this;
             var drawToolbar = this._tool;
+            var utils = new CustomUtil();
+            var measureUtil = new MeasureUtil();
+
+            var calculateMeasurement = utils.throttle(50, lang.hitch(this, function (graphics) {
+                if (this._deferredMeasurement && !this._deferredMeasurement.isFulfilled()) {
+                    this._deferredMeasurement.cancel("",false);
+                }
+                var measureDeferreds = [];
+                array.forEach(graphics,lang.hitch(this, function (_graphic) {
+                    measureDeferreds.push(this._calculateDistance(_graphic))
+                }));
+                this._deferredMeasurement = all(measureDeferreds);
+                this._deferredMeasurement.then(lang.hitch(this, function (measurements) {
+                    this._updateMeasurementInTooltip(measurements,"distance");
+                    this._hideMeasureResultsLoading();
+                    this._deferredMeasurement = null;
+                    var layer;
+                    drawToolbar._customGraphic ? (layer = drawToolbar._customGraphic._graphicsLayer  && layer ? layer.remove(drawToolbar._customGraphic) : "") : "";
+                }));
+
+            }));
             aspect.around(drawToolbar, "_onMouseDragHandler", function (orginalFn) {
                 return function (c) {
                     // doing something before the original call
@@ -66,116 +103,130 @@ define(
                     // doing something after the original call
                     if (me._showMeasure) {
                         if (drawToolbar._geometryType === "freehandpolyline" || drawToolbar._geometryType === 'line' && drawToolbar._points.length) {
-                            drawToolbar._tooltip.style.display = "";
+                            me._showMeasureResultsLoading();
                             if (drawToolbar._graphic) {
-                                var distance = me._calculateDistanceFromGeom(drawToolbar._graphic.geometry);
-                                distance = distance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");//adding commas 
-                                distance = distance + " " + me._distanceAbbr;
-                                var msgPrefix = "Let go to finish drawing. <br>";
-                                me._updateMeasurementInTootip({ type:"length",message: msgPrefix,singleSegment:true, total: distance });
+                                calculateMeasurement([drawToolbar._graphic]);
                             }
                         }
-                    } 
-                }
-            });
-            aspect.around(drawToolbar, "_onMouseMoveHandler", function (orginalFn) {
-                return function (c) {
-                    orginalFn.apply(this, arguments);
-                    // doing something after the original call
-                    if (me._showMeasure) {
-                        if (drawToolbar._geometryType === "polyline" && drawToolbar._points.length) {
-                            
-                            var  drawingDistance = 0,  drawnDistance = 0, totalDistance = 0;
-
-                            //measure current segment under drawing
-                            drawingDistance =  me._calculateDistanceFromGeom(drawToolbar._tGraphic.geometry);
-
-                            //measure all the drawn segments distance
-                            if (drawToolbar._points.length > 1) {
-                                var points = drawToolbar._points;
-                                var drawnGeom = me._createDistanceGeom(points);
-                                drawnDistance = me._calculateDistanceFromGeom(drawnGeom);
-                                
-                            }
-                            
-                            if (!drawnDistance) {
-                                totalDistance = drawingDistance;
-                            } else {
-                                totalDistance = (drawingDistance + drawnDistance).toFixed(1);
-                            }
-
-                            totalDistance = totalDistance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");//addding commas
-                            drawingDistance = drawingDistance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");//adding commas
-
-                            drawingDistance += " " + me._distanceAbbr;
-                            totalDistance += " " + me._distanceAbbr;
-                            var msgPrefix = "Double-click to finish. <br> Click to continue drawing. <br>";
-                            me._updateMeasurementInTootip({ type: "length", message: msgPrefix, singleSegment: false, total: totalDistance, intermediate: drawingDistance });
-                        }
-
+                       
                     }
+
                 }
             });
-            aspect.around(drawToolbar, "_onClickHandler", function (orginalFn) {
-                return function (c) {
-                    orginalFn.apply(this, arguments);
-                    // doing something after the original call
-                    if (me._showMeasure) {
-                        if (drawToolbar._geometryType === "polyline" && drawToolbar._points.length) {
-                            var lastSegmentDistance = 0,  totalDistance = 0;
-                            if (drawToolbar._points.length > 1) {
-
-                                //total distance 
-                                totalDistance = me._calculateDistanceFromGeom(drawToolbar._graphic.geometry);
-
-                                //last segment distance
-                                var totalPointsClicked = drawToolbar._points.length;
-
-                                //last segment would be made of last point and its penultimate point
-                                lastSegmentPoints = [drawToolbar._points[totalPointsClicked - 2], drawToolbar._points[totalPointsClicked - 1]]
-                                var leastSegmentGeom = me._createDistanceGeom(lastSegmentPoints);
-                                lastSegmentDistance = me._calculateDistanceFromGeom(leastSegmentGeom);
-
+            aspect.after(drawToolbar, "_onMouseMoveHandler", lang.hitch(this, function (orginalFn) {
+                if (this._showMeasure) {
+                    if (drawToolbar._geometryType === "polyline" && drawToolbar._points.length) {
+                        this._showMeasureResultsLoading();
+                        if (drawToolbar._points.length == 1) {
+                            drawToolbar._customGraphic = drawToolbar._tGraphic;
+                            calculateMeasurement([drawToolbar._customGraphic]);
+                        } else {
+                            var tempGra = array.filter(drawToolbar._tGraphic._graphicsLayer.graphics, function (gra) {
+                                gra.id === "temp"
+                            })[0];
+                            if (tempGra) {
+                                drawToolbar._tGraphic._graphicsLayer.remove(tempGra);
                             }
-
-
-                            totalDistance = totalDistance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");//addding commas
-                            lastSegmentDistance = lastSegmentDistance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");//adding commas
-
-                            lastSegmentDistance += " " + me._distanceAbbr;
-                            totalDistance += " " + me._distanceAbbr;
-                            var msgPrefix = "Double-click to finish. <br> Click to continue drawing. <br>";
-                            me._updateMeasurementInTootip({ type: "length", message: msgPrefix, singleSegment: false, total: totalDistance, intermediate: lastSegmentDistance });
+                            var pointArray = lang.clone(drawToolbar._points);
+                            var lastDrawnTempPoint = drawToolbar._tGraphic.geometry.paths[0][1];
+                            pointArray.push({ x: lastDrawnTempPoint[0], y: lastDrawnTempPoint[1] });
+                            var graphic = new Graphic(measureUtil.createLineFromPoints(pointArray));
+                            drawToolbar._tGraphic._graphicsLayer.add(graphic)
+                            drawToolbar._customGraphic = graphic;
+                            calculateMeasurement([drawToolbar._tGraphic,drawToolbar._customGraphic]);
                         }
                     }
+
                 }
-            });
+            }));
+
         },
-        _createDistanceGeom: function (ptArray) {
-            var points=[];
-            array.forEach(ptArray, function (pt) {
-                points.push([pt.x,pt.y])
-            });
-            var polyline = new Polyline(ptArray[0].spatialReference);
-            polyline.addPath(points);
-            return polyline;
+        _calculateDistance: function (graphic) {
+            var deferred = new Deferred();
+            var measureUtil = new MeasureUtil();
+            var areaUnit = this._areaUnit;
+            var areaAbbr = this._areaAbbr;
+            var distanceUnit = this._distanceUnit;
+            var distanceAbbr = this._distanceAbbr;
+            var geometry = graphic.geometry;
+            measureUtil._getLengthAndArea(geometry, false, distanceUnit, areaUnit).then(lang.hitch(this, function (result) {
+                var length = result.length;
+                var localeLength = jimuUtils.localizeNumber(length.toFixed(1));
+                deferred.resolve(localeLength)
+            }), lang.hitch(this, function (err) {
+                deferred.reject(err);
+            }));
+            return deferred.promise;
         },
-        _calculateDistanceFromGeom: function (geom) {
-            var unit = this._distanceUnit;
-            var geoPolyline = webMercatorUtils.webMercatorToGeographic(geom);
-            var lengths = geodesicUtils.geodesicLengths([geoPolyline], esriUnits[unit]);
-            var localeLength = jimuUtils.localizeNumber(lengths[0].toFixed(1));
-            localeLength = localeLength.replace(/\,/g, '');
-            return Math.abs(Number(localeLength));
+        _calculateArea: function (graphic) {
+            var deferred = new Deferred();
+            var measureUtil = new MeasureUtil();
+            var areaUnit = this._areaUnit;
+            var areaAbbr = this._areaAbbr;
+            var distanceUnit = this._distanceUnit;
+            var distanceAbbr = this._distanceAbbr;
+            var geometry = graphic.geometry;
+            measureUtil._getLengthAndArea(geometry, true, distanceUnit, areaUnit).then(lang.hitch(this, function (result) {
+                var area = result.area;
+                var localeArea = jimuUtils.localizeNumber(area.toFixed(1));
+                deferred.resolve(localeArea)
+            }), lang.hitch(this, function (err) {
+                deferred.reject(err);
+            }));
+            return deferred.promise;
         },
-        _calculateAreaFromGeom: function (geom) {
-            var unit = this._areaUnit;
-            var geoPolygon = webMercatorUtils.webMercatorToGeographic(geom);
-            var areas = geodesicUtils.geodesicAreas([geoPolygon], esriUnits[unit]);
-            var localeArea = jimuUtils.localizeNumber(areas[0].toFixed(1));
-            localeArea = localeArea.replace(/\,/g, '');
-            return Math.abs(Number(localeArea));
-           
+        _calculatePerimeterAndArea: function (graphic) {
+            var deferred = new Deferred();
+            var measureUtil = new MeasureUtil();
+            var areaUnit = this._areaUnit;
+            var areaAbbr = this._areaAbbr;
+            var distanceUnit = this._distanceUnit;
+            var distanceAbbr = this._distanceAbbr;
+            var geometry = graphic.geometry;
+            measureUtil._getLengthAndArea(geometry, true, distanceUnit.unit, areaUnit.unit).then(lang.hitch(this, function (result) {
+                var length = result.length;
+                var localeLength = jimuUtils.localizeNumber(length.toFixed(1));
+                var area = result.area;
+                var localeArea = jimuUtils.localizeNumber(area.toFixed(1));
+                deferred.resolve({ area: localeArea, length: localeLength });
+            }), lang.hitch(this, function (err) {
+                deferred.reject(err);
+            }));
+            return deferred.promise;
+        },
+        _showMeasureResultsLoading: function () {
+            if (this._tool._tooltip) {
+                this._tool._tooltip.style.display = "";
+                this._tool._tooltip.innerHTML = "<div style = 'height:30px;width:60px;'></div>";
+                domClass.add(this._tool._tooltip, "measure-loading");
+            }
+        },
+        _updateMeasurementInTooltip: function (measurements, type) {
+            var instructionText;
+            var distanceAbbr = this._distanceAbbr;
+            if (this._tool._tooltip && type === "distance") {
+                this._tool._tooltip.style.display = "";
+                this._tool._tooltip.style.width = "120px";
+                this._tool._tooltip.style.height = "40px";
+                if (measurements.length == 1) {
+                    instructionText = "Let go to finish.<br>";
+                } else if (measurements.length == 2 ) {
+                    instructionText = "Double-click to finish.<br>";
+                    instructionText += "Click to continue drawing.<br>";
+                    this._tool._tooltip.style.width = "145px";
+                }
+                instructionText += "Distance <b>: " + measurements[0] + distanceAbbr+ "</b><br>";
+                if (measurements.length == 2) {
+                    instructionText += "Total <b>: " + measurements[1] +distanceAbbr+ "</b>";
+                    this._tool._tooltip.style.height = "85px";
+                }
+                this._tool._tooltip.innerHTML = instructionText;
+            }
+        },
+        _hideMeasureResultsLoading: function () {
+            if (this._tool._tooltip) {
+                domClass.remove(this._tool._tooltip, "measure-loading");
+            }
         },
         _updateMeasurementInTootip: function (measureObj) {
             if (measureObj.type === "length") {

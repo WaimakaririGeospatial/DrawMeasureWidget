@@ -225,7 +225,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   
               }
               if (this.config.exportServiceUrl) {
-                this.exportServiceUrl = this.config.exportServiceUrl;
+                  this.exportServiceUrl = this.config.exportServiceUrl;
               }
               this.fileUploadForm.setAttribute("action", this.importServiceUrl);
               on(this.fileUploadField, 'change', lang.hitch(this, this._validateAndUploadFile));
@@ -417,16 +417,20 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               //bind symbol change events
               this.own(on(this.pointSymChooser, 'change', lang.hitch(this, function () {
                   this._setDrawDefaultSymbols();
+                  this._updateSymbologyOnEditedGraphic();
               })));
               this.own(on(this.lineSymChooser, 'change', lang.hitch(this, function () {
                   this._setDrawDefaultSymbols();
+                  this._updateSymbologyOnEditedGraphic();
               })));
               this.own(on(this.fillSymChooser, 'change', lang.hitch(this, function () {
                   this._setDrawDefaultSymbols();
                   this._updateBufferOperationValues();
+                  this._updateSymbologyOnEditedGraphic();
               })));
               this.own(on(this.textSymChooser, 'change', lang.hitch(this, function (symbol) {
                   this.drawBox.setTextSymbol(symbol);
+                  this._updateSymbologyOnEditedGraphic();
               })));
 
               //bind unit events
@@ -442,7 +446,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               var isSelected = html.hasClass(target, 'selected');
 
               //toggle tools on and off
-              if (isSelected) {
+              if (isSelected || this.bufferTool.isActive()) {
                   this.bufferTool.deactivate();
                   this._setBufferSectionVisibility(false)
               } else {
@@ -468,23 +472,35 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               if (this.bufferTool.isActive()) {
                   this.bufferTool.deactivate();
               }
+              if (editToolbar) {
+                  editToolbar.deactivate();
+              }
               this._setDrawDefaultSymbols();
-              if (commontype === 'point') {
-                  this.viewStack.switchView(this.pointSection);
-              }
-              else if (commontype === 'polyline') {
-                  this.viewStack.switchView(this.lineSection);
-              }
-              else if (commontype === 'polygon') {
-                  this.viewStack.switchView(this.polygonSection);
-              }
-              else if (commontype === 'text') {
-                  this.viewStack.switchView(this.textSection);
-              }
+              this._showSymbologyEditor(commontype);
+              this._clearTextSymbolEditor();
               this._setMeasureVisibility();
               this._setBufferSectionVisibility(false);
           },
-
+          _showSymbologyEditor:function(type){
+              if (type === 'point') {
+                  this.viewStack.switchView(this.pointSection);
+              }
+              else if (type === 'polyline') {
+                  this.viewStack.switchView(this.lineSection);
+              }
+              else if (type === 'polygon') {
+                  this.viewStack.switchView(this.polygonSection);
+              }
+              else if (type === 'text') {
+                  this.viewStack.switchView(this.textSection);
+              }
+          },
+          _clearTextSymbolEditor:function(){
+              this.textSymChooser.inputText.value = "";
+              this.textSymChooser._updateTextPreview();
+              this._getTextSymbol().setText("");
+              this.drawBox.setTextSymbol(this._getTextSymbol());
+           },
           _onDrawEnd: function (graphic, geotype, commontype) {
               var geometry = graphic.geometry;
               /////////////////////////////////////////
@@ -704,7 +720,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                       html.setStyle(this.areaMeasure, 'display', 'block');
                       //html.setStyle(this.distanceMeasure, 'display', 'block');
                   }
-              }
+              } 
           },
           _getPointSymbol: function () {
               return this.pointSymChooser.getSymbol();
@@ -726,6 +742,38 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               this.drawBox.setPointSymbol(this._getPointSymbol());
               this.drawBox.setLineSymbol(this._getLineSymbol());
               this.drawBox.setPolygonSymbol(this._getPolygonSymbol());
+              this.drawBox.setTextSymbol(this._getTextSymbol());
+          },
+          _updateSymbologyOnEditedGraphic: function () {
+              if (!editToolbar) {
+                  return;
+              }
+              var editedGraphic = editToolbar.getCurrentState().graphic;
+              if (!editedGraphic || !editedGraphic.symbol) {
+                  return
+              }
+              if (editedGraphic.symbol.type === "textsymbol") {
+                  var rotation = editedGraphic.symbol.angle;
+                  var font = editedGraphic.symbol.font;
+                  font.setSize(this._getTextSymbol().font.size);
+                  var symbol = this._getTextSymbol().setAngle(rotation).setFont(font);
+                  editedGraphic.setSymbol(symbol);
+              } else if (editedGraphic.geometry.type == "point") {
+                  editedGraphic.setSymbol(this._getPointSymbol());
+              } else if (editedGraphic.geometry.type == "polyline") {
+                  editedGraphic.setSymbol(this._getLineSymbol());
+              } else if (editedGraphic.geometry.type == "polygon") {
+                  editedGraphic.setSymbol(this._getPolygonSymbol());
+              }
+          },
+          _updateSymbologyEditor:function(graphic){
+              if (graphic.symbol.type === "textsymbol") {
+                  this.textSymChooser.inputText.value = graphic.symbol.text;
+                  this.textSymChooser.textFontSize.set("value", graphic.symbol.font.size);
+                  this.textSymChooser.textColor.set("value", graphic.symbol.color);
+                  this.textSymChooser._updateTextPreview();
+              }
+          
           },
           ///////////////////////////////////////////////////////////
           onOpen: function () {
@@ -757,12 +805,24 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   editToolbar.deactivate();
               });
 
-              aspect.before(editToolbar, "activate", lang.hitch(this, function () {
+              
+              editToolbar.on("activate", lang.hitch(this, function (evt) {
+                  this.drawBox.deactivate();
+                  var type = "";
+                  if (evt.graphic.symbol && evt.graphic.symbol.type === "textsymbol") {
+                      type = "text";
+                  } else {
+                      type = evt.graphic.geometry.type;
+                  }
+                  this._showSymbologyEditor(type);
+                  this._updateSymbologyEditor(evt.graphic);
+                  this._setMeasureVisibility();
                   if (this.bufferTool.isActive()) {
-                      this._onBufferToolClick({ target: this.bufferTool.domNode });
+                      this.bufferTool.deactivate();
                   }
               }));
 
+              
               //1.graphic move
               editToolbar.on("graphic-move-stop", lang.hitch(this, function (evt) {
                   this._repositionMeasureGraphics(evt);
@@ -790,7 +850,10 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                       onClick: function (evt) {
                           if (selected.geometry.type !== "point") {
                               editToolbar.activate(Edit.EDIT_VERTICES, selected);
-                          } else {
+                          } else if (selected.symbol && selected.symbol.type === "textsymbol") {
+                                editToolbar.activate(Edit.MOVE | Edit.EDIT_TEXT,selected);
+                          }
+                          else {
                               editToolbar.activate(Edit.MOVE | Edit.EDIT_VERTICES | Edit.EDIT_TEXT | Edit.SCALE, selected);
                           }
                       }
@@ -878,25 +941,26 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               var fontColor = new Color([0, 0, 0, 1]);
               var ext = geometry.getExtent();
               var center = ext.getCenter();
-              var geoLine = webMercatorUtils.webMercatorToGeographic(geometry);
-              var unit = this.distanceUnitSelect.value;
-              var lengths = geodesicUtils.geodesicLengths([geoLine], esriUnits[unit]);
-              var abbr = this._getDistanceUnitInfo(unit).label;
-              var localeLength = jimuUtils.localizeNumber(lengths[0].toFixed(1));
-              var length = localeLength + " " + abbr;
-              var textSymbol = new TextSymbol(length, symbolFont, fontColor);
 
-              var labelAttributes = null;
-              if(graphic.attributes){
-                  labelAttributes ={};
-                  labelAttributes = lang.clone(graphic.attributes);
-                  labelAttributes.aliasPoint = 'true';
-              }
-              var labelGraphic = new Graphic(center, textSymbol, labelAttributes, null);
-              this.drawBox.addGraphic(labelGraphic);
-              
-              var aliasPointGraphic = new Graphic(center, null, labelAttributes, null);
-              this.drawBox.addGraphic(aliasPointGraphic);
+
+              this.dynamicMeasure._calculateDistance(graphic).then(lang.hitch(this, function (distance) {
+                  var distUnit = this.distanceUnitSelect.value;
+                  var distAbbr = this._getDistanceUnitInfo(distUnit).abbr;
+                  var distanceText = distance + " " + distAbbr;
+                  var textSymbol = this._getTextSymbol().setText(distanceText).setFont(symbolFont);
+                  var labelAttributes = null;
+                  if (graphic.attributes) {
+                      labelAttributes = {};
+                      labelAttributes = lang.clone(graphic.attributes);
+                      labelAttributes.aliasPoint = 'true';
+                  }
+                  var labelGraphic = new Graphic(center, textSymbol, labelAttributes, null);
+                  this.drawBox.addGraphic(labelGraphic);
+
+                  var aliasPointGraphic = new Graphic(center, null, labelAttributes, null);
+                  this.drawBox.addGraphic(aliasPointGraphic);
+                  
+              }));
           },
 
           _addPolygonMeasure: function (graphic) {
@@ -908,26 +972,23 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               var fontColor = new Color([0, 0, 0, 1]);
               var ext = geometry.getExtent();
               var center = ext.getCenter();
-              var geoPolygon = webMercatorUtils.webMercatorToGeographic(geometry);
-              var areaUnit = this.areaUnitSelect.value;
-              var areaAbbr = this._getAreaUnitInfo(areaUnit).abbr;
-              var areas = geodesicUtils.geodesicAreas([geoPolygon], esriUnits[areaUnit]);
-              var localeArea = jimuUtils.localizeNumber(areas[0].toFixed(1));
-              var area = localeArea + " " + areaAbbr;
+              this.dynamicMeasure._calculateArea(graphic).then(lang.hitch(this, function (area) {
+                  var areaUnit = this.areaUnitSelect.value;
+                  var areaAbbr = this._getAreaUnitInfo(areaUnit).abbr;
+                  var areaText = area +" "+areaAbbr;
+                  var textSymbol = this._getTextSymbol().setText(areaText).setFont(symbolFont);
+                  var labelAttributes = null;
+                  if (graphic.attributes) {
+                      labelAttributes = {};
+                      labelAttributes = lang.clone(graphic.attributes);
+                      labelAttributes.aliasPoint = 'true';
+                  }
+                  var labelGraphic = new Graphic(center, textSymbol, labelAttributes, null);
+                  this.drawBox.addGraphic(labelGraphic);
 
-              var labelAttributes = null;
-              if (graphic.attributes) {
-                  labelAttributes = {};
-                  labelAttributes = lang.clone(graphic.attributes);
-                  labelAttributes.aliasPoint = 'true';
-              }
-
-
-              var textSymbol = new TextSymbol(area, symbolFont, fontColor);
-              var labelGraphic = new Graphic(center, textSymbol, labelAttributes, null);
-              var aliasPointGraphic = new Graphic(center, null, labelAttributes, null);
-              this.drawBox.addGraphic(labelGraphic);
-              this.drawBox.addGraphic(aliasPointGraphic);
+                  var aliasPointGraphic = new Graphic(center, null, labelAttributes, null);
+                  this.drawBox.addGraphic(aliasPointGraphic);
+              }));
           },
 
           _repositionMeasureGraphics: function (event) {
@@ -969,21 +1030,21 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               if (measureGraphics.length > 0) {
                   var measureGraphic = measureGraphics[0];
                   if (updatedGraphic.geometry.type === "polyline") {
-                      var distance = Number(this.dynamicMeasure._calculateDistanceFromGeom(updatedGraphic.geometry));
-                      var lengthUnit = this.distanceUnitSelect.value;
-                      var lengthLabel = this._getDistanceUnitInfo(lengthUnit).label;
-                      distance = distance.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");//addding commas
-                      distance = distance + " " + lengthLabel;
-                      measureGraphic.symbol.setText(distance);
-                      measureGraphic._graphicsLayer.redraw();
+                      this.dynamicMeasure._calculateDistance(updatedGraphic).then(lang.hitch(this, function (distance) {
+                          var distUnit = this.distanceUnitSelect.value;
+                          var distAbbr = this._getDistanceUnitInfo(distUnit).abbr;
+                          var distanceText = distance +" "+distAbbr;
+                          measureGraphic.symbol.setText(distanceText);
+                          measureGraphic._graphicsLayer.redraw();
+                      }));
                   } else if (updatedGraphic.geometry.type === "polygon") {
-                      var area = Number(this.dynamicMeasure._calculateAreaFromGeom(updatedGraphic.geometry));
-                      var areaUnit = this.areaUnitSelect.value;
-                      var areaAbbr = this._getAreaUnitInfo(areaUnit).abbr;
-                      area = area.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");//addding commas
-                      area = area + " " + areaAbbr;
-                      measureGraphic.symbol.setText(area);
-                      measureGraphic._graphicsLayer.redraw();
+                      this.dynamicMeasure._calculateArea(updatedGraphic).then(lang.hitch(this, function (area) {
+                          var areaUnit = this.areaUnitSelect.value;
+                          var areaAbbr = this._getAreaUnitInfo(areaUnit).abbr;
+                          var areaText = area +" "+areaAbbr;
+                          measureGraphic.symbol.setText(areaText);
+                          measureGraphic._graphicsLayer.redraw();
+                      }));
                   }
               }
           },
@@ -1049,6 +1110,9 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           _onBtnClearClicked: function () {
               if (!domClass.contains(this.btnClear, "jimu-state-disabled")) {
                   this.drawBox.drawLayer.clear();
+                  if (editToolbar) {
+                      editToolbar.deactivate();
+                  }
               }
           },
           _toggleLoading: function (state) {

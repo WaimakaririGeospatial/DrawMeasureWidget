@@ -102,3 +102,9 @@
     float:left !important;
     margin-left:30px;
 }
+.esriSymbolEditor {
+    display:none !important;
+}
+.measure-loading {
+    background:#fff url("../images/measure-loader.gif") center center no-repeat ;
+}
