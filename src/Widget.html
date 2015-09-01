@@ -45,12 +45,12 @@
         </div>
     </div>
     <form action="" data-dojo-attach-point="fileUploadForm" method="POST" enctype="multipart/form-data">
-        <input type="file" style="display:none;" accept=".mpk" name="file" data-dojo-attach-point="fileUploadField" size="50" />
+        <input type="file" id="drawMeasurefileUpload" style="display:none;" accept=".mpk" name="file" data-dojo-attach-point="fileUploadField" size="50" />
         <input type="hidden" name="f" value ="pjson">
         <input type="hidden" name="description" value="">
     </form>
     <div class="footer" data-dojo-attach-point="footerSection" align="center">
-        <div class="jimu-btn" data-dojo-attach-point="btnImport" >${nls.importGraphics}</div>
+        <label for="drawMeasurefileUpload" class="jimu-btn" data-dojo-attach-point="btnImport">${nls.importGraphics}</label>
         <div class="jimu-btn" data-dojo-attach-point="btnExport" >${nls.exportGraphics}</div>
         <div class="jimu-btn" data-dojo-attach-point="btnClear">${nls.clear}</div>
     </div>

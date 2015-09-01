@@ -77,9 +77,9 @@ define(
             var utils = new CustomUtil();
             var measureUtil = new MeasureUtil();
 
-            var calculateMeasurement = utils.throttle(50, lang.hitch(this, function (graphics) {
+            var calculateMeasurement = utils.debounce(200, lang.hitch(this, function (graphics) {
                 if (this._deferredMeasurement && !this._deferredMeasurement.isFulfilled()) {
-                    this._deferredMeasurement.cancel("",false);
+                    this._deferredMeasurement.cancel("", false);
                 }
                 var measureDeferreds = [];
                 array.forEach(graphics,lang.hitch(this, function (_graphic) {
@@ -92,7 +92,9 @@ define(
                     this._deferredMeasurement = null;
                     var layer;
                     drawToolbar._customGraphic ? (layer = drawToolbar._customGraphic._graphicsLayer  && layer ? layer.remove(drawToolbar._customGraphic) : "") : "";
-                }));
+                }), function (err) {
+                    console.log(err);
+                });
 
             }));
             aspect.around(drawToolbar, "_onMouseDragHandler", function (orginalFn) {
@@ -139,7 +141,31 @@ define(
 
                 }
             }));
-
+            aspect.after(drawToolbar, "_onClickHandler", lang.hitch(this, function (orginalFn) {
+                 if (this._showMeasure) {
+                    if (drawToolbar._geometryType === "polyline" && drawToolbar._points.length) {
+                        this._showMeasureResultsLoading();
+                        if (drawToolbar._points.length == 1) {
+                            drawToolbar._customGraphic = drawToolbar._tGraphic;
+                            calculateMeasurement([drawToolbar._customGraphic]);
+                        } else {
+                            var tempGra = array.filter(drawToolbar._tGraphic._graphicsLayer.graphics, function (gra) {
+                                gra.id === "temp"
+                            })[0];
+                            if (tempGra) {
+                                drawToolbar._tGraphic._graphicsLayer.remove(tempGra);
+                            }
+                            var pointArray = lang.clone(drawToolbar._points);
+                            var graphic = new Graphic(measureUtil.createLineFromPoints(pointArray));
+                            drawToolbar._tGraphic._graphicsLayer.add(graphic)
+                            drawToolbar._customGraphic = graphic;
+                            drawToolbar._tGraphic.setGeometry(measureUtil.createLineFromPoints([pointArray[pointArray.length - 1], pointArray[pointArray.length - 2]]));
+                            calculateMeasurement([drawToolbar._tGraphic,drawToolbar._customGraphic]);
+                        }
+                    }
+                }
+            }));
+           
         },
         _calculateDistance: function (graphic) {
             var deferred = new Deferred();

@@ -108,6 +108,15 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               this._registerGraphicAddRemoveEvents();
               this._updateFileExportImportSettings();
               this._createBusyIndicator();
+
+              var me = this;
+              on(this.btnImport, "click", function (e) {
+                  // prevent default file upload behaviour when file input is disabled
+                  if (domClass.contains(me.btnImport, "jimu-state-disabled")) {
+                      e.preventDefault();
+                  }
+              });
+
           },
           _enableDynamicMeasurementCapability: function () {
               this.dynamicMeasure = new DynamicMeasure(this.drawBox.drawToolBar);
@@ -193,10 +202,12 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           },
           _registerGraphicAddRemoveEvents: function () {
               this.drawBox.drawLayer.on("graphic-add", lang.hitch(this, function () {
+                  this.appConfig._drawnGraphics = true;
                   this._activateButtonStates();
               }));
               this.drawBox.drawLayer.on("graphic-remove", lang.hitch(this, function () {
                   if (this.drawBox.drawLayer.graphics.length == 0) {
+                      this.appConfig._drawnGraphics = false;
                       this._resetButtonStates();
                   }
               }));
@@ -231,6 +242,13 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               on(this.fileUploadField, 'change', lang.hitch(this, this._validateAndUploadFile));
           },
           _validateAndUploadFile: function (val) {
+              if (this.fileUploadField.value === "" || this.fileUploadField.value === null) {
+                  // val is set to empty after an upload, so that change events are always ready to fire
+                  // even when uploading the same file again
+                  // when val is empty, ignore
+                  return;
+              }
+
               var validation = this._validateFileInput();
               if (validation) {
                   this._toggleLoading(true);
@@ -284,6 +302,9 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                           this._showErrorMessage(this.nls.failedUpload);
                           deferred.resolve();
                       }
+
+                      this.fileUploadForm.reset();
+                      this.fileUploadField.value = "";
                   }),
                   lang.hitch(this,function (e) {
                       if (e.message != 'Request canceled') {
@@ -436,8 +457,12 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               //bind unit events
               this.own(on(this.showMeasure, 'click', lang.hitch(this, this._setMeasureVisibility)));
               
-              //bind Import/Export/Clear button events
-              this.own(on(this.btnImport, 'click', lang.hitch(this, this._importGraphicsFileClicked)));
+              // bind Import/Export/Clear button events
+              // no longer applied to import button, due to an issue with IE10 and below. We have switched this to a label
+              // so file upload is initiated by default browser behaviour, not by javascript
+              // http://stackoverflow.com/questions/9396411/ie-javascript-form-submit-with-file-input
+
+              //this.own(on(this.btnImport, 'click', lang.hitch(this, this._importGraphicsFileClicked)));
               this.own(on(this.btnExport, 'click', lang.hitch(this, this._exportGraphicsFileClicked)));
               this.own(on(this.btnClear, 'click', lang.hitch(this, this._onBtnClearClicked)));
           },
@@ -1178,6 +1203,8 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               this.inherited(arguments);
               this.viewStack.startup();
               this.viewStack.switchView(null);
+              //start by activating point section
+              this.drawBox.activate("POINT");
           }
 
       });
