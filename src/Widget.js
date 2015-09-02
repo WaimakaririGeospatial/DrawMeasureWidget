@@ -1141,7 +1141,11 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               }
           },
           _toggleLoading: function (state) {
-              state ? this._busyLoader.show() : this._busyLoader.hide();
+              if (state) {
+                  try { this._busyLoader.show() } catch (e) { };//ie fix for _busyLoader
+              } else {
+                  try { this._busyLoader.hide() } catch (e) { };//ie fix for _busyLoader
+              }
           },
           _showErrorMessage: function (msg) {
               var popup = new Message({
