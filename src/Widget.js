@@ -1076,7 +1076,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           _deleteGraphic:function(delGraphic){
               //finding the measurement graphics and aliases
               var measureGraphics = array.filter(this.drawBox.drawLayer.graphics, lang.hitch(this, function (graphic) {
-                  return graphic.attributes && (graphic.attributes["uniqueId"] == delGraphic.attributes["uniqueId"] && graphic.geometry.type === 'point');
+                  return graphic.attributes && delGraphic.attributes && (graphic.attributes["uniqueId"] == delGraphic.attributes["uniqueId"] && graphic.geometry.type === 'point');
               }));
               if (measureGraphics.length > 0) {
                   array.forEach(measureGraphics,function(graphic){
@@ -1159,7 +1159,11 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               var exportUtil = new ExportUtil();
               var webmapJson = exportUtil.getWebmapJson(this.map);
               var url = this.exportServiceUrl;
-
+              var corsEnabledServers = esri.config.defaults.io.corsEnabledServers;
+              var domain = this.extractDomain(url);
+              if (array.indexOf(corsEnabledServers, domain) == -1) {
+                  esri.config.defaults.io.corsEnabledServers.push(domain);
+              }
               this.exportDeferred = esri.request({
                   url: url,
                   content: {
