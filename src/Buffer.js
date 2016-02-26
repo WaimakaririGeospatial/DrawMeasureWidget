@@ -51,7 +51,7 @@ define(
         },
         _mousetip: null,
         _isActive: false,
-        constructor: function (container, map, layer, config) {
+        constructor: function (container, map, layer,nls, config) {
             this.domNode = domConstruct.create("div", {
                 "title": "Buffer",
                 "data-geotype": "BUFFER",
@@ -62,6 +62,7 @@ define(
             this._setMap(map);
             this._setLayer(layer);
             this._setConfig(config);
+            this._setNls(nls);
             this._createMousetip();
         },
         _setMap: function (map) {
@@ -73,6 +74,9 @@ define(
         _setConfig: function (config) {
             this.config = config;
         },
+        _setNls:function(nls){
+            this.nls = nls;
+        },
         setParams: function (a, b, c) {
             this._distance = a;
             this._unit = b;
@@ -82,26 +86,51 @@ define(
             var me = this;
             this._isActive = true;
             this._activateMouseTip();
-            domClass.add(this.domNode, "selected");
+            domClass.add(this.domNode, "jimu-state-active");
             if (!this._clickHandle) {
                 this._clickHandle = connect.connect(this._map, "onClick", function (evt) {
                     var extentGeom = me.pointToExtent(evt.mapPoint, me._map);
+                    var sourceGraphicIndex;
                     var filteredGraphics = array.filter(me._layer.graphics, function (graphic, index) {
-                        return extentGeom.contains(graphic.geometry) || extentGeom.intersects(graphic.geometry);
+                        if (extentGeom.contains(graphic.geometry) || extentGeom.intersects(graphic.geometry)) {
+                            sourceGraphicIndex = index;
+                            return true;
+                        }
                     });
                     if (filteredGraphics.length > 0) {
-                        me.doBuffer(filteredGraphics[0]).then(function (bufferGeom) {
-                            var bufferGraphic = new Graphic(bufferGeom, me._symbology, { uniqueId: new Date().getTime() });
+                        var sourceGraphic = filteredGraphics[0];
+                        me.doBuffer(sourceGraphic).then(function (bufferGeom) {
+                            var bufferGraphic = new Graphic(bufferGeom, me._symbology, { uniqueId: new Date().getTime(),pariId:"Pari" });
                             me._layer.add(bufferGraphic);
                             if (bufferGraphic && bufferGraphic.getDojoShape()) {
                                 if (me._distance <= 0) {
                                     bufferGraphic.getDojoShape().moveToFront();
                                 } else {
-                                    bufferGraphic.getDojoShape().moveToBack();
+                                    //swapping the positions of orginal and buffer in the layer.graphics array 
+                                    //so that the smaller one comes on top when imported from a mpk file
+                                    var sourceAttributes = lang.clone(sourceGraphic.attributes);
+                                    var sourceGeometry = lang.clone(sourceGraphic.geometry);
+                                    var sourceSymbol = lang.clone(sourceGraphic.symbol);
+
+                                    var bufferAttributes = lang.clone(bufferGraphic.attributes);
+                                    var buffereGeometry = lang.clone(bufferGraphic.geometry);
+                                    var bufferSymbol = lang.clone(bufferGraphic.symbol);
+                                    
+
+                                    bufferGraphic.setGeometry(sourceGeometry);
+                                    bufferGraphic.setAttributes(sourceAttributes);
+                                    bufferGraphic.setSymbol(sourceSymbol);
+
+
+                                    sourceGraphic.setGeometry(buffereGeometry);
+                                    sourceGraphic.setAttributes(bufferAttributes); 
+                                    sourceGraphic.setSymbol(bufferSymbol);
+
+                                    //sourceGraphic and bufferGraphic are now swapped by now in terms of geometry/attributes
+                                    sourceGraphic.getDojoShape().moveToBack();
                                 }
                             }
                             topic.publish("BUFFER_GRAPHIC_ADDED", bufferGraphic);
-
                         }, function () {
                             me._showErrorMessage();
                         })
@@ -114,7 +143,7 @@ define(
         deactivate: function () {
             this._isActive = false;
             this._deactivateTooltip();
-            domClass.remove(this.domNode, "selected");
+            domClass.remove(this.domNode, "jimu-state-active");
             if (this._clickHandle) {
                 connect.disconnect(this._clickHandle);
                 this._clickHandle = null;
@@ -141,8 +170,8 @@ define(
             return extent;
         },
         _createMousetip: function () {
-            if (this.config.mousetip) {
-                this._mousetip = domConstruct.create("div", { "class": "mousetip", "innerHTML": this.config.mousetip }, this._map.container);
+            if (this.nls.mousetip) {
+                this._mousetip = domConstruct.create("div", { "class": "mousetip", "innerHTML": this.nls.mousetip }, this._map.container);
                 domStyle.set(this._mousetip, {
                     "position": "fixed",
                     "display": "none"
@@ -187,7 +216,9 @@ define(
                 connect.disconnect(this._mousetipHandle.mouseMove);
                 this._mousetipHandle.mouseMove = null;
             }
-            this._mousetip.style.display = "none";
+            if (this._mousetip) {
+                this._mousetip.style.display = "none";
+            }
         },
         doBuffer: function (graphic) {
             var me = this;
@@ -216,7 +247,7 @@ define(
         },
         _showErrorMessage: function () {
             var popup = new Message({
-                message: this.config.invalidRequestMessage,
+                message: this.nls.invalidRequestMessage,
                 buttons: [{
                     label: "OK",
                     onClick: lang.hitch(this, function () {

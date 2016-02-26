@@ -14,7 +14,7 @@ define(
     "dojo/topic",
     'dojo/Deferred',
     'esri/tasks/PrintTask'
-    
+
 ], function (
     declare,
     array,
@@ -45,7 +45,8 @@ define(
 
 
             var printTask = new PrintTask();
-            var w = printTask._getPrintDefinition(map);
+            // gbs.sjh - second paramater is required at sjapi v3.14, is a PrintTemplate object I think. This is quick fix.
+            var w = printTask._getPrintDefinition(map, {preserveScale: false});
 
             var operationalLayers = this.getOperationalLayers(w,map);
             var mapOptions = w.mapOptions;
@@ -71,7 +72,7 @@ define(
                                                 feat.symbol.url = baseUrl + feat.symbol.url;
                                             }
                                         }
-                                        // text symbol, remove all attributes 
+                                        // text symbol, remove all attributes
                                         if (feat.symbol.type === "esriTS") {
                                             feat.attributes = {};
                                         }
@@ -83,7 +84,7 @@ define(
                 }
             });
 
-            webmapJson = this.stringify(w); 
+            webmapJson = this.stringify(w);
 
             return webmapJson;
         },
@@ -106,7 +107,3 @@ define(
 
     return ExportUtil;
 });
-
-
-
-
