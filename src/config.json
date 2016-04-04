@@ -51,35 +51,35 @@
             "abbr": "sq yd"
         }
     ],
-    "customPointSymbology": [
-        {
-            "name": "Picture Markers",
-            "file": "picturemarker"
+    "pictureMarkers": [
+		{
+             "label": "Picture Markers",
+			 "file": "picturemarker"
         }
     ],
-	"bufferSettings":{
-		"mousetip":"Click on a drawing",
-		"invalidRequestMessage":"Invalid buffer request.",
-		"bufferDistanceUnits": [
-			{
-				"unit": "Kilometers",
-				"esriConstant": "UNIT_KILOMETER"
-			},
-			{
-				"unit": "Meters",
-				"esriConstant": "UNIT_METER"
-			},
-			{
-				"unit": "Miles",
-				"esriConstant": "UNIT_STATUTE_MILE"
-			},
-			{
-				"unit": "Feet",
-				"esriConstant": "UNIT_FOOT"
-			}
-		]
-	},
+	"bufferUnits": [
+		{
+			"label": "Kilometers",
+			"unit": "UNIT_KILOMETER",
+			"enabled": true
+		},
+		{
+			"label": "Meters",
+			"unit": "UNIT_METER",
+			"enabled": true
+		},
+		{
+			"label": "Miles",
+			"unit": "UNIT_STATUTE_MILE",
+			"enabled": true
+		},
+		{
+			"label": "Feet",
+			"unit": "UNIT_FOOT",
+			"enabled": true
+		}
+	],
 	"includeExportImport":false,
-	"importServiceUrl":"https://secure.gbs.co.nz/arcgis/rest/services/WDC/ExportGraphics/GPServer/uploads/upload",
-	"exportServiceUrl":"https://secure.gbs.co.nz/arcgis/rest/services/WDC/ExportGraphics/GPServer/ExportGraphics/execute"
+	 "importServiceUrl": "https://secure.gbs.co.nz/arcgis_anon/rest/services/GPTools/ExportGraphics/GPServer/uploads/upload",
+	"exportServiceUrl": "https://secure.gbs.co.nz/arcgis_anon/rest/services/GPTools/ExportGraphics/GPServer/ExportGraphics/execute"
 }

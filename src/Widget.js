@@ -18,6 +18,8 @@ define([
     'dojo/_base/declare',
      "dojo/_base/connect",
      'dojo/Deferred',
+     'dojo/query',
+     'dojo/dom-attr',
     'dijit/_WidgetsInTemplateMixin',
     'jimu/BaseWidget',
     'esri/graphic',
@@ -64,7 +66,7 @@ define([
     './DynamicMeasure',
     './ExportUtil'
 ],
-function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphic, Point,
+function (declare, connect, Deferred, domQuery, domAttr, _WidgetsInTemplateMixin, BaseWidget, Graphic, Point,
     SimpleMarkerSymbol, Polyline, SimpleLineSymbol, Polygon, SimpleFillSymbol,
     TextSymbol, Font, esriUnits, webMercatorUtils, geodesicUtils, lang, on, aspect,screenUtils,ScreenPoint,
 	///////////////////
@@ -77,7 +79,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
       var MoveMenu, RoScMenu, SepMenu, MenuDelete, XYMenu;
       ////////////////////////////
       return declare([BaseWidget, _WidgetsInTemplateMixin], {
-          name: 'AdvancedDraw',
+          name: 'DrawMeasureWiget',
           baseClass: 'jimu-widget-draw',
 
           postMixInProperties: function () {
@@ -98,7 +100,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               this._initUnitSelect();
               this._initBufferUnitSelect();
               this._bindEvents();
-              this._addCustomPointSymbology();
+              this._addCustomPictureMarkerSymbology();
               this._showFooterPanel();
               this._setExportImportButtonVisibility();
               this._resetButtonStates();
@@ -154,17 +156,16 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           _addBufferTool: function () {
               var toolDom = domQuery("div.draw-items", this.drawBox.domNode)[0];
               var params = {};
-              lang.mixin(params, this.config.bufferSettings);
               params.geomServiceUrl = this.appConfig.geometryService;
-              this.bufferTool = new Buffer(toolDom, this.map, this.drawBox.drawLayer, params);
+              this.bufferTool = new Buffer(toolDom, this.map, this.drawBox.drawLayer, this.nls,params);
               on(this.bufferTool.domNode, 'click', lang.hitch(this, this._onBufferToolClick));
-              topic.subscribe('INVALID_BUFFER_REQUEST', lang.hitch(this, function () {
+              this.invalidBufferTopic =topic.subscribe('INVALID_BUFFER_REQUEST', lang.hitch(this, function () {
                   this._onBufferToolClick({ target: this.bufferTool.domNode })
               }));
               topic.subscribe("LOADING_REQUEST", lang.hitch(this, function () {
                   this._toggleLoading(arguments[0]);
               }));
-              topic.subscribe("BUFFER_GRAPHIC_ADDED", lang.hitch(this, function () {
+              this.bufferAddTopic = topic.subscribe("BUFFER_GRAPHIC_ADDED", lang.hitch(this, function () {
                   this._onBufferToolClick({ target: this.bufferTool.domNode })
                   if (this.showMeasure.checked) {
                       this._addPolygonMeasure(arguments[0]);
@@ -174,10 +175,11 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           _showFooterPanel: function () {
               domStyle.set(this.footerSection, "display", "block");
           },
-          _addCustomPointSymbology: function () {
-              if (this.config.customPointSymbology && this.config.customPointSymbology.length) {
-                  array.forEach(this.config.customPointSymbology, lang.hitch(this, function (symbol) {
-                      this.pointSymChooser.pointSymClassSelect.addOption({ label: symbol.name, value: symbol.file })
+          _addCustomPictureMarkerSymbology: function () {
+              if (this.config.pictureMarkers && this.config.pictureMarkers.length) {
+                  array.forEach(this.config.pictureMarkers, lang.hitch(this, function (symbol) {
+                      var file = symbol.file.replace(/\.json/, "");
+                      this.pointSymChooser.pointSymClassSelect.addOption({ label: symbol.label, value: file })
                   }));
               }
           },
@@ -226,14 +228,14 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               var symbology = this._getPolygonSymbol();
               this.bufferTool.setParams(distance, unit, symbology)
           },
-          
+
           _createBusyIndicator: function () {
               this._busyLoader = busyUtil.create(this.domNode)
           },
           _updateFileExportImportSettings: function () {
               if (this.config.importServiceUrl) {
                   this.importServiceUrl = this.config.importServiceUrl;
-                  
+
               }
               if (this.config.exportServiceUrl) {
                   this.exportServiceUrl = this.config.exportServiceUrl;
@@ -271,12 +273,13 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
           _uploadMapPackageFile: function () {
               var deferred = new Deferred();
               var form = this.fileUploadForm;
-              
+
               var corsEnabledServers = esri.config.defaults.io.corsEnabledServers;
               var domain = this.extractDomain(form.action);
               if (array.indexOf(corsEnabledServers, domain) == -1) {
                   esri.config.defaults.io.corsEnabledServers.push(domain);
               }
+
               var uploadDeferred = esri.request({
                   url: form.action,
                   form: this.fileUploadForm,
@@ -366,7 +369,11 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               // all graphics except text are from redline layer
               var redlineGraphicsLayerConfig = array.filter(results.operationalLayers, function (layer) {
                   var regExp = new RegExp(/graphicsLayer/ig);
-                  return regExp.test(layer.id);
+                  if (regExp.test(layer.id)){
+                      if(layer.featureCollection && layer.featureCollection.layers.length > 0 ){
+                          return true;
+                      }
+                  }
               })[0];
 
               if (!redlineGraphicsLayerConfig || !redlineGraphicsLayerConfig.featureCollection) {
@@ -395,8 +402,8 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   }
               });
 
-              
-              //now update the main graphic uniqueId to prevent graphics with duplicate unique id 
+
+              //now update the main graphic uniqueId to prevent graphics with duplicate unique id
               //that may come through multiple uploads
 
               var aliasGraphics = array.filter(graphicsArray, function (graphic) {
@@ -454,9 +461,14 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this._updateSymbologyOnEditedGraphic();
               })));
 
+              this.own(on(this.textSymChooser.inputText, 'keyup', lang.hitch(this, function (symbol) {
+                  this.drawBox.setTextSymbol(symbol);
+                  this._updateSymbologyOnEditedGraphic();
+              })));
+
               //bind unit events
               this.own(on(this.showMeasure, 'click', lang.hitch(this, this._setMeasureVisibility)));
-              
+
               // bind Import/Export/Clear button events
               // no longer applied to import button, due to an issue with IE10 and below. We have switched this to a label
               // so file upload is initiated by default browser behaviour, not by javascript
@@ -559,7 +571,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               graphic._graphicsLayer.on("mouse-out", function (evt) {
                   ctxMenuForGraphics.unBindDomNode(evt.graphic.getDojoShape().getNode());
               });
-              //////////////////////////////////////////		 
+              //////////////////////////////////////////
 
               if (geometry.type && geometry.type === 'extent') {
                   var a = geometry;
@@ -587,16 +599,21 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   }
               } else if (commontype === "point") {
                   graphic.setAttributes({ uniqueId: new Date().getTime() });
+              } else if (commontype === 'text') {
+                  this.drawBox.setTextSymbol(this._getTextSymbol());
+                  graphic.setSymbol(this._getTextSymbol());
               }
           },
           _initBufferUnitSelect: function () {
-              var bufferDistanceUnits = this.config.bufferSettings.bufferDistanceUnits;
-              array.forEach(bufferDistanceUnits, lang.hitch(this, function (unitInfo) {
-                  var option = {
-                      value: unitInfo.esriConstant,
-                      label: unitInfo.unit
-                  };
-                  this.bufferUnitsSelect.addOption(option);
+              var bufferUnits = this.config.bufferUnits;
+              array.forEach(bufferUnits, lang.hitch(this, function (unitInfo) {
+                  if (unitInfo.enabled) {
+                      var option = {
+                          value: unitInfo.unit,
+                          label: unitInfo.label
+                      };
+                      this.bufferUnitsSelect.addOption(option);
+                  }
               }));
           },
           _initUnitSelect: function () {
@@ -745,7 +762,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                       html.setStyle(this.areaMeasure, 'display', 'block');
                       //html.setStyle(this.distanceMeasure, 'display', 'block');
                   }
-              } 
+              }
           },
           _getPointSymbol: function () {
               return this.pointSymChooser.getSymbol();
@@ -798,7 +815,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this.textSymChooser.textColor.set("value", graphic.symbol.color);
                   this.textSymChooser._updateTextPreview();
               }
-          
+
           },
           ///////////////////////////////////////////////////////////
           onOpen: function () {
@@ -806,7 +823,6 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               var map = this.map;
               function sniffWKID() {
                   if (map.spatialReference.wkid == "102100") {
-                      console.log("Good to go!");
                       Spat = "geo";
                   } else {
                       Spatialutils.loadResource().then(function () {
@@ -826,11 +842,19 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               sniffWKID();
 
               editToolbar = new Edit(map);
-              map.on("click", function (evt) {
+              map.on("click",lang.hitch(this, function (evt) {
+                  if (editToolbar) {
+                      var graphic = editToolbar.getCurrentState().graphic;
+                      if (graphic && graphic.symbol && graphic.symbol.type === "textsymbol") {
+                          this._updateSymbologyEditor(graphic);
+                          this._setDrawDefaultSymbols();
+                          this._updateSymbologyOnEditedGraphic();
+                      }
+                  }
                   editToolbar.deactivate();
-              });
+              }));
 
-              
+
               editToolbar.on("activate", lang.hitch(this, function (evt) {
                   this.drawBox.deactivate();
                   var type = "";
@@ -848,6 +872,8 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               }));
 
               
+
+
               //1.graphic move
               editToolbar.on("graphic-move-stop", lang.hitch(this, function (evt) {
                   this._repositionMeasureGraphics(evt);
@@ -867,7 +893,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               }));
 
 
-              //Creates the right-click menu  
+              //Creates the right-click menu
               function createGraphicsMenu() {
                   ctxMenuForGraphics = new Menu({});
                   ctxMenuForGraphics.addChild(new MenuItem({
@@ -966,8 +992,6 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               var fontColor = new Color([0, 0, 0, 1]);
               var ext = geometry.getExtent();
               var center = ext.getCenter();
-
-
               this.dynamicMeasure._calculateDistance(graphic).then(lang.hitch(this, function (distance) {
                   var distUnit = this.distanceUnitSelect.value;
                   var distAbbr = this._getDistanceUnitInfo(distUnit).abbr;
@@ -984,10 +1008,9 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
 
                   var aliasPointGraphic = new Graphic(center, null, labelAttributes, null);
                   this.drawBox.addGraphic(aliasPointGraphic);
-                  
+
               }));
           },
-
           _addPolygonMeasure: function (graphic) {
               var geometry = graphic.geometry;
               var a = Font.STYLE_ITALIC;
@@ -1108,6 +1131,8 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   this.textSymChooser.destroy();
                   this.textSymChooser = null;
               }
+              this.invalidBufferTopic.remove();
+              this.bufferAddTopic.remove();
               this.inherited(arguments);
           },
           _importGraphicsFileClicked: function () {
@@ -1124,7 +1149,6 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                       if (url) {
                           window.location = url;
                       } else {
-                          console.log(resp);
                           this._toggleLoading(false);
                           this._showErrorMessage("error")
                           return;
@@ -1190,7 +1214,7 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
                   })
               );
               return deferred.promise;
-          
+
           },
           extractDomain:function(url) {
                 var domain;
@@ -1213,7 +1237,41 @@ function (declare, connect, Deferred,_WidgetsInTemplateMixin, BaseWidget, Graphi
               this.viewStack.switchView(null);
               //start by activating point section
               this.drawBox.activate("POINT");
-          }
+              this._setVersionTitle();
+          },
+
+      	  _setVersionTitle: function(){
+      	      var labelNode = this._getLabelNode(this);
+      	      var manifestInfo = this.manifest;
+      	      var devVersion = manifestInfo.version;
+      	      var devWabVersion = manifestInfo.developedAgainst || manifestInfo.wabVersion;
+      	      var codeSourcedFrom = manifestInfo.codeSourcedFrom;
+      	      var client = manifestInfo.client;
+
+      	      var title = "Dev version: " + devVersion + "\n";
+      	      title += "Developed/Modified against: WAB" + devWabVersion + "\n";
+      	      title += "Client: " + client + "\n";
+      	      if (codeSourcedFrom) {
+      	          title += "Code sourced from: " + codeSourcedFrom + "\n";
+      	      }
+
+      	      if (labelNode) {
+      	          domAttr.set(labelNode, 'title', title);
+      	      }
+
+      		},
+            _getLabelNode: function (widget) {
+                  var labelNode;
+                  if (!(widget.labelNode) && !(widget.titleLabelNode) ) {
+                      if (widget.getParent()) {
+                          labelNode = this._getLabelNode(widget.getParent());
+                      }
+                  } else {
+                      labelNode = widget.labelNode || widget.titleLabelNode;
+                  }
+                  return labelNode;
+        
+              }
 
       });
   });

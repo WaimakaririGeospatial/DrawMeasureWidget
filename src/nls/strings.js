@@ -42,6 +42,8 @@ define({
     squareYards: "Square yards",
     bufferDistance:"Buffer Distance",
     bufferUnits: "Buffer Units",
+    bufferMouseTip: "Click on a drawing",
+    invalidRequestMessage: "Invalid buffer request.",
     invalidUploadFile: "File type not supported for this operation.Please use map package files (.mpk)",
     failedUpload: "File upload failed.Please contact the administrator.",
     failedRetrievingGraphics: "Failed to import graphics."

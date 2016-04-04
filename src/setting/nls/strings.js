@@ -2,6 +2,7 @@ define({
   root: ({
     addDistance: "Add Length Unit",
     addArea: "Add Area Unit",
+    addBufferUnits:"Add Buffer Unit",
     label: "Label",
     abbr: "Abbreviation",
     conversion: "Conversion",
@@ -24,7 +25,9 @@ define({
     area: "Areas",
     includeExportImport: "Include Save/Open",
     exportUrl: "Export Service",//save
-    importUrl: "Import Service",//upload
+    importUrl: "Import Service",//upload,
+    btnAddPictureMarker: "Add Picture Markers",
+    file:"File name"
   }),
   "ar": 1,
   "cs": 1,

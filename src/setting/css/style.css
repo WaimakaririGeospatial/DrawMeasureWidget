@@ -1,3 +1,7 @@
+.jimu-widget-draw-setting {
+    font-size:14px;
+    color:#7989a0;
+}
 .jimu-widget-draw-setting .btn-add-section{
   display:inline-block;
   overflow:hidden;
@@ -40,6 +44,8 @@
     position:relative;
     width:100%;
     margin-bottom:20px;
+    border-top:1px solid #ccc;
+    float:left;
 }
 .export-import-setting table td.first{
   width:auto;
@@ -53,3 +59,10 @@
   width:650px;
   padding-top:10px;
 }
+
+.buffer-setting,.units-setting,.picture-marker-setting {
+    position:relative;
+    width:100%;
+    float:left;
+}
+

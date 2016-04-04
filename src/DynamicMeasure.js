@@ -138,7 +138,6 @@ define(
                             calculateMeasurement([drawToolbar._tGraphic,drawToolbar._customGraphic]);
                         }
                     }
-
                 }
             }));
             aspect.after(drawToolbar, "_onClickHandler", lang.hitch(this, function (orginalFn) {
@@ -232,8 +231,10 @@ define(
             var distanceAbbr = this._distanceAbbr;
             if (this._tool._tooltip && type === "distance") {
                 this._tool._tooltip.style.display = "";
-                this._tool._tooltip.style.width = "120px";
-                this._tool._tooltip.style.height = "40px";
+                this._tool._tooltip.style.minWidth = "120px";
+                this._tool._tooltip.style.minHeight = "40px";
+                this._tool._tooltip.style.height = "auto";
+                this._tool._tooltip.style.width = "auto";
                 if (measurements.length == 1) {
                     instructionText = "Let go to finish.<br>";
                 } else if (measurements.length == 2 ) {
@@ -241,9 +242,9 @@ define(
                     instructionText += "Click to continue drawing.<br>";
                     this._tool._tooltip.style.width = "145px";
                 }
-                instructionText += "Distance <b>: " + measurements[0] + distanceAbbr+ "</b><br>";
+                instructionText += "Distance <b>: " + measurements[0] + distanceAbbr+ "</b>";
                 if (measurements.length == 2) {
-                    instructionText += "Total <b>: " + measurements[1] +distanceAbbr+ "</b>";
+                    instructionText += "<br> Total <b>: " + measurements[1] + distanceAbbr + "</b>";
                     this._tool._tooltip.style.height = "85px";
                 }
                 this._tool._tooltip.innerHTML = instructionText;
@@ -252,28 +253,6 @@ define(
         _hideMeasureResultsLoading: function () {
             if (this._tool._tooltip) {
                 domClass.remove(this._tool._tooltip, "measure-loading");
-            }
-        },
-        _updateMeasurementInTootip: function (measureObj) {
-            if (measureObj.type === "length") {
-                var prefix = measureObj.message;
-                if (measureObj.singleSegment) {
-                    var msg = prefix+"Distance: <b>"+ measureObj.total;
-                    this._tool._tooltip.innerHTML = msg + "</b>";
-                    this._tool._tooltip.style.width = "165px";
-                } else {
-
-                    var msg = prefix + "Distance: <b>";
-                    msg = msg + measureObj.intermediate;
-
-                    msg += "</b> <br> Total: <b>";
-                    msg += measureObj.total;
-
-                    this._tool._tooltip.innerHTML = msg + "</b>";
-                    this._tool._tooltip.style.width = "auto";
-                    this._tool._tooltip.style.padding = "10px;";
-
-                }
             }
         },
         _updateTooltipPosition:function(c){

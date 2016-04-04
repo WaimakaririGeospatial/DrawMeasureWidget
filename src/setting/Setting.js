@@ -25,16 +25,18 @@ define([
     'jimu/BaseWidgetSetting',
     'jimu/dijit/TabContainer',
     'jimu/dijit/SimpleTable',
+    'dijit/form/CheckBox',
     'jimu/utils',
+    'jimu/CustomUtils/SimpleTable',
     'dijit/form/Select'
   ],
   function(declare, lang, array, html, query, on, _WidgetsInTemplateMixin, BaseWidgetSetting,
-    TabContainer, SimpleTable, jimuUtils, Select) {
+    TabContainer, SimpleTable,CheckBox, jimuUtils,SimpleTable, Select) {
     return declare([BaseWidgetSetting, _WidgetsInTemplateMixin], {
       baseClass: 'jimu-widget-draw-setting',
       distanceUnits:null,
       areaUnits:null,
-
+      bufferUnits:null,
       postMixInProperties:function(){
         this.inherited(arguments);
 
@@ -108,7 +110,6 @@ define([
         this.inherited(arguments);
         this.own(on(this.btnAddDistance,'click',lang.hitch(this,this._addDistance)));
         this.own(on(this.btnAddArea, 'click', lang.hitch(this, this._addArea)));
-        this.own(on(this.includeExportImport, 'statechange', lang.hitch(this, this._toggleExportImportSection)));
         this.own(on(this.distanceTable,'row-delete',lang.hitch(this,function(tr){
           if(tr.select){
             tr.select.destroy();
@@ -123,13 +124,34 @@ define([
           }
           this._resetAreaSelectOptions();
         })));
+
+        this.own(on(this.btnAddBuffer, 'click', lang.hitch(this, this._addBufferUnit)));
+        this.own(on(this.bufferUnitsTable, 'row-delete', lang.hitch(this, function (tr) {
+            if (tr.select) {
+                this._markAsUnused(tr.select.get("value"));
+                tr.select.destroy();
+                delete tr.select;
+            }
+            this._resetBufferSelectOptions();
+        })));
+
+        this.own(on(this.pictureMarkersTable, 'actions-edit', lang.hitch(this, function (row) {
+            this.onTableEditClick(this.pictureMarkersTable, row);
+        })));
+        on(this.btnAddPictureMarker, "click", lang.hitch(this, function () {
+            var data = { label: "", file: "" };
+            this.onRowAddClick(this.pictureMarkersTable, data);
+        }));
+
         this.setConfig(this.config);
       },
 
       startup: function() {
         this.inherited(arguments);
-    
         this.tabContainer = new TabContainer({
+            "class": "units-setting",
+            doLayout: true,
+            isLayoutContainer:true,
           tabs: [{
             title: this.nls.distance,
             content: this.distanceTabNode
@@ -146,6 +168,8 @@ define([
         this.config = config;
         this._setDistanceTable(this.config.distanceUnits);
         this._setAreaTable(this.config.areaUnits);
+        this._setBufferTable(this.config.bufferUnits);
+        this._setPictureMarkers(this.config.pictureMarkers);
         this._setIncludeExportImport(this.config.includeExportImport);
         this._setImportServiceUrl(this.config.importServiceUrl);
         this._setExportServiceUrl(this.config.exportServiceUrl);
@@ -174,20 +198,49 @@ define([
           this._addAreaUnitRow(defaultUnitInfo);
         }));
       },
+     
+      _setBufferTable: function (bufferUnits) {
+          this.bufferUnitsTable.clear();
+          array.forEach(bufferUnits, lang.hitch(this, function (item) {
+              var defaultUnitInfo = this._getBufferUnitInfo(item.unit);
+              if (!defaultUnitInfo || !defaultUnitInfo.enabled) {
+                  return;
+              }
+              this._addBufferUnitRow(defaultUnitInfo);
+          }));
+      },
+      _setPictureMarkers: function (obj) {
+          if (obj && obj.length > 0) {
+              array.forEach(obj, lang.hitch(this, function (data) {
+                  this.pictureMarkersTable.addRow(data)
+              }));
+          }
+      },
+      _getPictureMarkers: function () {
+          var data = this.pictureMarkersTable.getData();
+          var filteredData = array.filter(data, function (data) {
+              var name = lang.trim(data.label);
+              var file = lang.trim(data.file);
+              if (name && file) {
+                  return true;
+              }
+          })
+          return filteredData;  
+      },
       _setIncludeExportImport: function (state) {
-          state ? this.includeExportImport.check() : this.includeExportImport.uncheck()
+          state ? this.includeExportImport.set("checked", true) : this.includeExportImport.set("checked", false);
+          this.includeExportImport.onChange();
       },
       getConfig: function() {
         var config = {
           distanceUnits:[],
           areaUnits:[],
-          customPointSymbology:[]
         };
         config.distanceUnits = this._getDistanceConfig();
         config.areaUnits = this._getAreaConfig();
-        config.customPointSymbology = this.config.customPointSymbology ? this.config.customPointSymbology : null;
-        config.bufferSettings = this.config.bufferSettings ? this.config.bufferSettings : null;
-        config.includeExportImport = this.includeExportImport.checked;
+        config.pictureMarkers = this._getPictureMarkers();
+        config.bufferUnits = this._getBufferUnits();
+        config.includeExportImport = this.includeExportImport.get("checked");
         config.importServiceUrl = this._getImportServiceUrl();
         config.exportServiceUrl = this._getExportServiceUrl();
         return config;
@@ -204,6 +257,9 @@ define([
       _setExportServiceUrl: function (_url) {
            this.exportServiceUrl.set("value", _url);
       },
+      _getBufferUnits: function () {
+          return this.config.bufferUnits;
+      },
       _getDistanceConfig:function(){
         var result = [];
         var trs = this.distanceTable.getRows();
@@ -218,7 +274,6 @@ define([
         }));
         return result;
       },
-
       _getAreaConfig:function(){
         var result = [];
         var trs = this.areaTable.getRows();
@@ -233,14 +288,12 @@ define([
         }));
         return result;
       },
-
       _getAllDistanceUnitValues:function(){
         var distanceUnitValues = array.map(this.distanceUnits,lang.hitch(this,function(item){
           return item.value;
         }));
         return distanceUnitValues;
       },
-
       _getUsedDistanceUnitValues:function(){
         var trs = this.distanceTable.getRows();
         var usedDistanceUnitValues = array.map(trs,lang.hitch(this,function(tr){
@@ -248,7 +301,6 @@ define([
         }));
         return usedDistanceUnitValues;
       },
-
       _getNotUsedDistanceUnitValues:function(){
         var allValues = this._getAllDistanceUnitValues();
         var usedValues = this._getUsedDistanceUnitValues();
@@ -257,7 +309,6 @@ define([
         }));
         return notUsedValues;
       },
-
       _getDistanceUnitInfo:function(value){
         var result = null;
         var units = array.filter(this.distanceUnits,lang.hitch(this,function(unit){
@@ -268,7 +319,6 @@ define([
         }
         return result;
       },
-
       _addDistance:function(){
         var notUsedValues = this._getNotUsedDistanceUnitValues();
         if(notUsedValues.length === 0){
@@ -278,7 +328,6 @@ define([
         var unitInfo = this._getDistanceUnitInfo(value);
         this._addDistanceUnitRow(unitInfo);
       },
-
       _addDistanceUnitRow:function(unitInfo){
         var rowData = {
           abbr:unitInfo.abbr,
@@ -287,25 +336,21 @@ define([
         var result = this.distanceTable.addRow(rowData);
         if(result.success && result.tr){
           var tr = result.tr;
-          var td = query('.simple-table-td',tr)[0];
-          html.setStyle(td,"verticalAlign","middle");
-          var select = new Select({style:{
-            width:"100%",
-            height:"30px"
-          }});
+          var td = query('.simple-table-cell', tr)[0];
+          html.setStyle(td, "verticalAlign", "middle");
+          var select = new Select({ style: "width:100%;height:18px;line-height:18px;" });
           select.placeAt(td);
           select.startup();
           select.addOption({
-            value:unitInfo.value,
-            label:unitInfo.label,
-            selected:true
+              value: unitInfo.value,
+              label: unitInfo.label,
+              selected: true
           });
           this.own(on(select,'change',lang.hitch(this,this._resetDistanceSelectOptions)));
           tr.select = select;
         }
         this._resetDistanceSelectOptions();
       },
-
       _showCorrectDistanceInfoBySelectedOption:function(tr){
         var select = tr.select;
         var unitInfo = this._getDistanceUnitInfo(select.value);
@@ -315,7 +360,6 @@ define([
         };
         this.distanceTable.editRow(tr,rowData);
       },
-
       _resetDistanceSelectOptions:function(){
         var trs = this.distanceTable.getRows();
         var selects = array.map(trs,lang.hitch(this,function(tr){
@@ -395,20 +439,17 @@ define([
         };
         var result = this.areaTable.addRow(rowData);
         if(result.success && result.tr){
-          var tr = result.tr;
-          var td = query('.simple-table-td',tr)[0];
-          html.setStyle(td,"verticalAlign","middle");
-          var select = new Select({style:{
-            width:"100%",
-            height:"30px"
-          }});
-          select.placeAt(td);
-          select.startup();
-          select.addOption({
-            value:unitInfo.value,
-            label:unitInfo.label,
-            selected:true
-          });
+            var tr = result.tr;
+            var td = query('.simple-table-cell', tr)[0];
+            html.setStyle(td, "verticalAlign", "middle");
+            var select = new Select({ style: "width:100%;height:18px;line-height:18px;" });
+            select.placeAt(td);
+            select.startup();
+            select.addOption({
+                value: unitInfo.value,
+                label: unitInfo.label,
+                selected: true
+            });
           this.own(on(select,'change',lang.hitch(this,this._resetAreaSelectOptions)));
           tr.select = select;
         }
@@ -451,9 +492,119 @@ define([
           this._showCorrectAreaInfoBySelectedOption(tr);
         }));
       },
-      _toggleExportImportSection: function () {
-          this.includeExportImport.checked ? html.setStyle(this.exportImportSection, "display", "") :  html.setStyle(this.exportImportSection, "display", "none");
+      _addBufferUnit:function(){
+          var notUsedValues = this._getNotUsedBufferUnitValues();
+          if(notUsedValues.length === 0){
+              return;
+          }
+          var value = notUsedValues[0];
+          var unitInfo = this._getBufferUnitInfo(value);
+          this._addBufferUnitRow(unitInfo);
+      },
+      _addBufferUnitRow:function(unitInfo){
+          var rowData = {
+              label: unitInfo.label
+          };
+          var result = this.bufferUnitsTable.addRow(rowData);
+          if(result.success && result.tr){
+              var tr = result.tr;
+              var td = query('.simple-table-cell', tr)[0];
+              html.setStyle(td, "verticalAlign", "middle");
+              var select = new Select({style:"width:100%;height:18px;line-height:18px;"});
+              select.placeAt(td);
+              select.startup();
+              select.addOption({
+                  value:unitInfo.unit,
+                  label:unitInfo.label,
+                  selected:true
+              });
+              select.watch("value", lang.hitch(this, function (prop,oldValue, newValue) {
+                  this._markAsUsed(newValue);
+                  this._markAsUnused(oldValue);
+                  this._resetBufferSelectOptions();
+              }));
+              tr.select = select;
+              this._markAsUsed(unitInfo.unit);
+          }
+          this._resetBufferSelectOptions();
+      },
+      _getNotUsedBufferUnitValues:function(){
+          var notUsedValues = array.map(array.filter(this.config.bufferUnits, lang.hitch(this, function (item) {
+              return !item.enabled
+          })), function (item) {
+              return item.unit ;
+          });
+          return notUsedValues;
+      },
+      _getBufferUnitInfo:function(value){
+          var result = null;
+          var units = array.filter(this.config.bufferUnits, lang.hitch(this, function(item){
+              return item.unit === value;
+          }));
+          if(units.length > 0){
+              result = lang.mixin({}, units[0]);
+          }
+          return result;
+      },
+      _markAsUnused: function (val) {
+          array.filter(this.config.bufferUnits, function (unitInfo) {
+              return unitInfo.unit === val;
+          })[0].enabled = false;
+      },
+      _markAsUsed: function (val) {
+          array.filter(this.config.bufferUnits, function (unitInfo) {
+              return unitInfo.unit === val;
+          })[0].enabled = true;
+      },
+      _resetBufferSelectOptions: function () {
+          var trs = this.bufferUnitsTable.getRows();
+          var selects = array.map(trs,lang.hitch(this,function(tr){
+              return tr.select;
+          }));
+          var notUsedValues = this._getNotUsedBufferUnitValues();
+          var notUsedUnitsInfo = array.map(notUsedValues,lang.hitch(this,function(value){
+              return this._getBufferUnitInfo(value);
+          }));
+          array.forEach(selects,lang.hitch(this,function(select,index){
+              var currentValue = select.get('value');
+              var notSelectedOptions = array.filter(select.getOptions(),
+                 lang.hitch(this, function (option) {
+                     return option.value !== currentValue;
+                 }));
+              select.removeOption(notSelectedOptions);
+              array.forEach(notUsedUnitsInfo,lang.hitch(this,function(unitInfo){
+                  select.addOption({
+                      value:unitInfo.unit,
+                      label:unitInfo.label
+                  });
+              }));
+              select.set('value',currentValue);
+              var tr = trs[index];
+              this._showCorrectBufferInfoBySelectedOption(tr);
+          }));
+      },
+      _showCorrectBufferInfoBySelectedOption:function(tr){
+          var select = tr.select;
+          var unitInfo = this._getBufferUnitInfo(select.value);
+          var rowData = {
+              label: unitInfo.label
+          };
+          this.bufferUnitsTable.editRow(tr, rowData);
+      },
+     _toggleExportImportSection: function () {
+          this.includeExportImport.get("checked") ? html.setStyle(this.exportImportSection, "display", "") :  html.setStyle(this.exportImportSection, "display", "none");
+     },
+        //------------------------------------//
+        onRowAddClick: function (table, data) {
+            table.finishEditing();
+            var rowAddResult = table.addRow(data, false);
+            var row = rowAddResult.tr;
+            table.editRow(row, data);
+        },
+      onTableEditClick: function (table, row) {
+          table.finishEditing();
+          var data = table.getRowData(row);
+          table.editRow(row, data);
       }
-
     });
   });
